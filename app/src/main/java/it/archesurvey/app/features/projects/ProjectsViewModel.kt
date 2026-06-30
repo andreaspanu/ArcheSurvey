@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import it.archesurvey.app.core.common.AppResult
+import it.archesurvey.app.domain.usecase.DeleteProjectUseCase
 import it.archesurvey.app.domain.usecase.GetProjectsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ProjectsViewModel(
-    private val getProjectsUseCase: GetProjectsUseCase
+    private val getProjectsUseCase: GetProjectsUseCase,
+    private val deleteProjectUseCase: DeleteProjectUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ProjectsUiState())
     val uiState: StateFlow<ProjectsUiState> = _uiState.asStateFlow()
@@ -23,6 +25,7 @@ class ProjectsViewModel(
     fun onEvent(event: ProjectsUiEvent) {
         when (event) {
             ProjectsUiEvent.Refresh -> loadProjects()
+            is ProjectsUiEvent.DeleteProject -> deleteProject(event.projectId)
         }
     }
 
@@ -42,12 +45,27 @@ class ProjectsViewModel(
         }
     }
 
+    private fun deleteProject(projectId: String) {
+        viewModelScope.launch {
+            when (val result = deleteProjectUseCase(projectId)) {
+                is AppResult.Success -> loadProjects()
+                is AppResult.Error -> {
+                    _uiState.value = _uiState.value.copy(errorMessage = result.reason.message)
+                }
+            }
+        }
+    }
+
     class Factory(
-        private val getProjectsUseCase: GetProjectsUseCase
+        private val getProjectsUseCase: GetProjectsUseCase,
+        private val deleteProjectUseCase: DeleteProjectUseCase
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return ProjectsViewModel(getProjectsUseCase) as T
+            return ProjectsViewModel(
+                getProjectsUseCase = getProjectsUseCase,
+                deleteProjectUseCase = deleteProjectUseCase
+            ) as T
         }
     }
 }

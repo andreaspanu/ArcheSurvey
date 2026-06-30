@@ -9,8 +9,17 @@
     <string name="version_name">Versione 0.1.0</string>
     <string name="projects_title">Progetti</string>
     <string name="projects_empty_state">Nessun progetto disponibile.</string>
+    <string name="projects_empty_description">Crea il primo progetto per organizzare rilievi, clienti e documentazione tecnica.</string>
     <string name="projects_loading">Caricamento progetti...</string>
     <string name="projects_count">Progetti disponibili: %1$d</string>
+    <string name="new_project_title">Nuovo progetto</string>
+    <string name="project_name_label">Nome progetto</string>
+    <string name="project_client_label">Cliente</string>
+    <string name="project_location_label">Indirizzo o comune</string>
+    <string name="project_notes_label">Note</string>
+    <string name="project_client_value">Cliente: %1$s</string>
+    <string name="project_location_value">Luogo: %1$s</string>
+    <string name="project_value_not_available">Non indicato</string>
     <string name="survey_title">Nuovo rilievo</string>
     <string name="survey_empty_state">Il flusso di rilievo sara disponibile nei prossimi sprint.</string>
     <string name="survey_loading">Preparazione rilievo...</string>
@@ -28,4 +37,9 @@
     <string name="navigation_back">Indietro</string>
     <string name="action_refresh">Aggiorna</string>
     <string name="action_prepare_capture">Prepara acquisizione</string>
+    <string name="action_new_project">Nuovo progetto</string>
+    <string name="action_save_project">Salva</string>
+    <string name="action_saving">Salvataggio...</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_delete_project">Elimina progetto</string>
 </resources>

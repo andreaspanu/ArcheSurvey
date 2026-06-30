@@ -16,6 +16,9 @@ import it.archesurvey.app.features.home.HomeUiEvent
 import it.archesurvey.app.features.home.HomeViewModel
 import it.archesurvey.app.features.projects.ProjectsScreen
 import it.archesurvey.app.features.projects.ProjectsViewModel
+import it.archesurvey.app.features.projects.newproject.NewProjectScreen
+import it.archesurvey.app.features.projects.newproject.NewProjectUiEvent
+import it.archesurvey.app.features.projects.newproject.NewProjectViewModel
 import it.archesurvey.app.features.settings.SettingsScreen
 import it.archesurvey.app.features.settings.SettingsViewModel
 import it.archesurvey.app.features.survey.SurveyScreen
@@ -27,7 +30,13 @@ fun AppNavigation() {
     val appContainer = remember { AppContainer() }
     val defaultFactory = remember { ViewModelProvider.NewInstanceFactory() }
     val projectsFactory = remember(appContainer) {
-        ProjectsViewModel.Factory(appContainer.getProjectsUseCase)
+        ProjectsViewModel.Factory(
+            getProjectsUseCase = appContainer.getProjectsUseCase,
+            deleteProjectUseCase = appContainer.deleteProjectUseCase
+        )
+    }
+    val newProjectFactory = remember(appContainer) {
+        NewProjectViewModel.Factory(appContainer.createProjectUseCase)
     }
     val surveyFactory = remember(appContainer) {
         SurveyViewModel.Factory(appContainer.getSurveysUseCase)
@@ -68,7 +77,26 @@ fun AppNavigation() {
             ProjectsScreen(
                 uiState = uiState,
                 onEvent = viewModel::onEvent,
+                onNewProject = { navController.navigate(Route.NewProject.value) },
                 onBack = navController::navigateUp
+            )
+        }
+        composable(Route.NewProject.value) { backStackEntry ->
+            val viewModel: NewProjectViewModel = navViewModel(backStackEntry, newProjectFactory)
+            val uiState by viewModel.uiState.collectAsState()
+
+            NewProjectScreen(
+                uiState = uiState,
+                onEvent = { event ->
+                    viewModel.onEvent(event) {
+                        navController.navigate(Route.Projects.value) {
+                            popUpTo(Route.Projects.value) {
+                                inclusive = true
+                            }
+                        }
+                    }
+                },
+                onCancel = navController::navigateUp
             )
         }
         composable(Route.Survey.value) { backStackEntry ->
