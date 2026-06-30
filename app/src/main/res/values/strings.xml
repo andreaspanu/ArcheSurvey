@@ -60,8 +60,17 @@
     <string name="action_enable_camera">Abilita camera</string>
     <string name="action_add_corner">Aggiungi angolo</string>
     <string name="action_add_wall">Aggiungi parete</string>
+    <string name="action_add_point">Aggiungi punto</string>
+    <string name="action_add_segment_between_points">Aggiungi segmento tra due punti</string>
     <string name="action_add_opening">Aggiungi apertura</string>
     <string name="action_add_manual_measurement">Inserisci misura di controllo</string>
+    <string name="action_delete_last_element">Cancella ultimo elemento</string>
+    <string name="manual_measurement_description_label">Descrizione misura</string>
+    <string name="manual_measurement_value_label">Valore in metri</string>
+    <string name="manual_measurement_attach_last_segment">Associa all ultimo segmento</string>
+    <string name="manual_measurement_segment_attached">segmento</string>
+    <string name="manual_measurement_free">libera</string>
+    <string name="manual_measurement_row">%1$d. %2$s - %3$.2f m - %4$s</string>
     <string name="opening_type_door">Porta</string>
     <string name="opening_type_window">Finestra</string>
 </resources>

@@ -7,7 +7,6 @@ import it.archesurvey.app.domain.model.OpeningType
 import it.archesurvey.app.domain.model.SurveyPoint
 import it.archesurvey.app.domain.model.SurveySegment
 import it.archesurvey.app.domain.model.SurveyWorkspace
-import it.archesurvey.app.domain.model.WallCorner
 import it.archesurvey.app.domain.model.WallOpening
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,10 +25,20 @@ class SurveyWorkspaceViewModel(
 
     fun onEvent(event: SurveyWorkspaceUiEvent) {
         when (event) {
-            SurveyWorkspaceUiEvent.AddCorner -> addCorner()
-            SurveyWorkspaceUiEvent.AddWall -> addWall()
+            SurveyWorkspaceUiEvent.AddPoint -> addPoint()
+            SurveyWorkspaceUiEvent.AddSegmentBetweenPoints -> addSegmentBetweenLastPoints()
             SurveyWorkspaceUiEvent.AddOpening -> addOpening()
             SurveyWorkspaceUiEvent.AddManualMeasurement -> addManualMeasurement()
+            SurveyWorkspaceUiEvent.DeleteLastElement -> deleteLastElement()
+            is SurveyWorkspaceUiEvent.ManualMeasurementDescriptionChanged -> {
+                _uiState.value = _uiState.value.copy(manualMeasurementDescription = event.value)
+            }
+            is SurveyWorkspaceUiEvent.ManualMeasurementValueChanged -> {
+                _uiState.value = _uiState.value.copy(manualMeasurementValueMeters = event.value)
+            }
+            is SurveyWorkspaceUiEvent.AssociateMeasurementToLastSegmentChanged -> {
+                _uiState.value = _uiState.value.copy(associateMeasurementToLastSegment = event.enabled)
+            }
             is SurveyWorkspaceUiEvent.OpeningTypeSelected -> {
                 _uiState.value = _uiState.value.copy(selectedOpeningType = event.type)
             }
@@ -39,45 +48,52 @@ class SurveyWorkspaceViewModel(
         }
     }
 
-    private fun addCorner() {
+    private fun addPoint() {
         val state = _uiState.value
-        val index = state.workspace.corners.size
+        val index = state.workspace.points.size
         val point = SurveyPoint(
             id = newId(),
-            xMeters = index.toFloat(),
-            yMeters = if (index % 2 == 0) 0f else 3f
+            xMeters = (index % GRID_COLUMNS).toFloat() * DEFAULT_POINT_STEP_METERS,
+            yMeters = (index / GRID_COLUMNS).toFloat() * DEFAULT_POINT_STEP_METERS
         )
         _uiState.value = state.copy(
             workspace = state.workspace.copy(
-                points = state.workspace.points + point,
-                corners = state.workspace.corners + WallCorner(
-                    id = newId(),
-                    point = point
-                )
-            )
+                points = state.workspace.points + point
+            ),
+            history = state.history + SurveyWorkspaceElementType.POINT
         )
     }
 
-    private fun addWall() {
+    private fun addSegmentBetweenLastPoints() {
         val state = _uiState.value
-        val base = state.workspace.segments.size.toFloat()
-        val start = SurveyPoint(newId(), base, 0f)
-        val end = SurveyPoint(newId(), base + 2f, 0f)
+        val points = state.workspace.points
+        if (points.size < 2) {
+            addPoint()
+            addPoint()
+        }
+        val updatedState = _uiState.value
+        val endPoint = updatedState.workspace.points.lastOrNull() ?: return
+        val startPoint = updatedState.workspace.points.dropLast(1).lastOrNull() ?: return
+        val exists = updatedState.workspace.segments.any {
+            it.startPointId == startPoint.id && it.endPointId == endPoint.id
+        }
+        if (exists) return
+
         val segment = SurveySegment(
             id = newId(),
-            startPointId = start.id,
-            endPointId = end.id
+            startPointId = startPoint.id,
+            endPointId = endPoint.id
         )
-        _uiState.value = state.copy(
-            workspace = state.workspace.copy(
-                points = state.workspace.points + listOf(start, end),
-                segments = state.workspace.segments + segment
-            )
+        _uiState.value = updatedState.copy(
+            workspace = updatedState.workspace.copy(
+                segments = updatedState.workspace.segments + segment
+            ),
+            history = updatedState.history + SurveyWorkspaceElementType.SEGMENT
         )
     }
 
     private fun addOpening() {
-        ensureWallExists()
+        ensureSegmentExists()
         val state = _uiState.value
         val segment = state.workspace.segments.lastOrNull() ?: return
         val opening = WallOpening(
@@ -90,27 +106,67 @@ class SurveyWorkspaceViewModel(
         _uiState.value = state.copy(
             workspace = state.workspace.copy(
                 openings = state.workspace.openings + opening
-            )
+            ),
+            history = state.history + SurveyWorkspaceElementType.OPENING
         )
     }
 
     private fun addManualMeasurement() {
         val state = _uiState.value
+        val valueMeters = state.manualMeasurementValueMeters
+            .replace(',', '.')
+            .toFloatOrNull()
+            ?: DEFAULT_MEASUREMENT_METERS
+        val fallbackIndex = state.workspace.manualMeasurements.size + 1
         val measurement = ManualMeasurement(
             id = newId(),
-            label = "M${state.workspace.manualMeasurements.size + 1}",
-            valueMeters = 3.0f
+            description = state.manualMeasurementDescription.ifBlank {
+                "M$fallbackIndex"
+            },
+            valueMeters = valueMeters,
+            segmentId = if (state.associateMeasurementToLastSegment) {
+                state.workspace.segments.lastOrNull()?.id
+            } else {
+                null
+            }
         )
         _uiState.value = state.copy(
             workspace = state.workspace.copy(
                 manualMeasurements = state.workspace.manualMeasurements + measurement
-            )
+            ),
+            manualMeasurementDescription = "",
+            manualMeasurementValueMeters = "",
+            history = state.history + SurveyWorkspaceElementType.MEASUREMENT
         )
     }
 
-    private fun ensureWallExists() {
+    private fun deleteLastElement() {
+        val state = _uiState.value
+        val lastElement = state.history.lastOrNull() ?: return
+        val workspace = state.workspace
+        val updatedWorkspace = when (lastElement) {
+            SurveyWorkspaceElementType.MEASUREMENT -> workspace.copy(
+                manualMeasurements = workspace.manualMeasurements.dropLast(1)
+            )
+            SurveyWorkspaceElementType.OPENING -> workspace.copy(
+                openings = workspace.openings.dropLast(1)
+            )
+            SurveyWorkspaceElementType.SEGMENT -> workspace.copy(
+                segments = workspace.segments.dropLast(1)
+            )
+            SurveyWorkspaceElementType.POINT -> workspace.copy(
+                points = workspace.points.dropLast(1)
+            )
+        }
+        _uiState.value = state.copy(
+            workspace = updatedWorkspace,
+            history = state.history.dropLast(1)
+        )
+    }
+
+    private fun ensureSegmentExists() {
         if (_uiState.value.workspace.segments.isEmpty()) {
-            addWall()
+            addSegmentBetweenLastPoints()
         }
     }
 
@@ -123,5 +179,11 @@ class SurveyWorkspaceViewModel(
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             return SurveyWorkspaceViewModel(surveyId) as T
         }
+    }
+
+    private companion object {
+        const val GRID_COLUMNS = 4
+        const val DEFAULT_POINT_STEP_METERS = 2f
+        const val DEFAULT_MEASUREMENT_METERS = 3f
     }
 }
