@@ -18,6 +18,13 @@ sealed class Route(val value: String) {
             return "projects/$projectId/surveys/new"
         }
     }
+    data object SurveyWorkspace : Route("surveys/{surveyId}/workspace") {
+        const val ARG_SURVEY_ID = "surveyId"
+
+        fun create(surveyId: String): String {
+            return "surveys/$surveyId/workspace"
+        }
+    }
     data object Settings : Route("settings")
     data object About : Route("about")
 }

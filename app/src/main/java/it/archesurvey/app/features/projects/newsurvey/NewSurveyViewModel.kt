@@ -19,7 +19,7 @@ class NewSurveyViewModel(
 
     fun onEvent(
         event: NewSurveyUiEvent,
-        onSurveySaved: () -> Unit = {}
+        onSurveySaved: (String) -> Unit = {}
     ) {
         when (event) {
             is NewSurveyUiEvent.NameChanged -> updateState(name = event.value)
@@ -40,7 +40,7 @@ class NewSurveyViewModel(
         )
     }
 
-    private fun saveSurvey(onSurveySaved: () -> Unit) {
+    private fun saveSurvey(onSurveySaved: (String) -> Unit) {
         val state = _uiState.value
         if (!state.canSave || state.isSaving) return
 
@@ -51,7 +51,7 @@ class NewSurveyViewModel(
                 title = state.name,
                 notes = state.notes
             )) {
-                is AppResult.Success -> onSurveySaved()
+                is AppResult.Success -> onSurveySaved(result.value.id)
                 is AppResult.Error -> {
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,

@@ -28,6 +28,7 @@ fun ProjectDetailScreen(
     uiState: ProjectDetailUiState,
     onEvent: (ProjectDetailUiEvent) -> Unit,
     onNewSurvey: () -> Unit,
+    onSurveySelected: (String) -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -55,7 +56,10 @@ fun ProjectDetailScreen(
                         text = stringResource(R.string.action_new_survey),
                         onClick = onNewSurvey
                     )
-                    SurveyListCard(surveys = uiState.surveys)
+                    SurveyListCard(
+                        surveys = uiState.surveys,
+                        onSurveySelected = onSurveySelected
+                    )
                     AppButton(
                         text = stringResource(R.string.action_refresh),
                         onClick = { onEvent(ProjectDetailUiEvent.Refresh) }
@@ -96,7 +100,10 @@ private fun ProjectInfoCard(project: Project) {
 }
 
 @Composable
-private fun SurveyListCard(surveys: List<Survey>) {
+private fun SurveyListCard(
+    surveys: List<Survey>,
+    onSurveySelected: (String) -> Unit
+) {
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.project_surveys_title),
@@ -109,9 +116,9 @@ private fun SurveyListCard(surveys: List<Survey>) {
             )
         } else {
             surveys.forEach { survey ->
-                Text(
+                AppButton(
                     text = survey.title,
-                    style = MaterialTheme.typography.bodyLarge
+                    onClick = { onSurveySelected(survey.id) }
                 )
                 if (survey.notes.isNotBlank()) {
                     Text(

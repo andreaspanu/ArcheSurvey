@@ -28,6 +28,8 @@ import it.archesurvey.app.features.projects.newsurvey.NewSurveyScreen
 import it.archesurvey.app.features.projects.newsurvey.NewSurveyViewModel
 import it.archesurvey.app.features.settings.SettingsScreen
 import it.archesurvey.app.features.settings.SettingsViewModel
+import it.archesurvey.app.features.surveyworkspace.SurveyWorkspaceScreen
+import it.archesurvey.app.features.surveyworkspace.SurveyWorkspaceViewModel
 
 @Composable
 fun AppNavigation() {
@@ -128,6 +130,9 @@ fun AppNavigation() {
                 uiState = uiState,
                 onEvent = viewModel::onEvent,
                 onNewSurvey = { navController.navigate(Route.NewSurvey.create(projectId)) },
+                onSurveySelected = { surveyId ->
+                    navController.navigate(Route.SurveyWorkspace.create(surveyId))
+                },
                 onBack = navController::navigateUp
             )
         }
@@ -156,15 +161,40 @@ fun AppNavigation() {
             NewSurveyScreen(
                 uiState = uiState,
                 onEvent = { event ->
-                    viewModel.onEvent(event) {
-                        navController.navigate(Route.ProjectDetail.create(projectId)) {
-                            popUpTo(Route.ProjectDetail.value) {
+                    viewModel.onEvent(event) { surveyId ->
+                        navController.navigate(Route.SurveyWorkspace.create(surveyId)) {
+                            popUpTo(Route.NewSurvey.value) {
                                 inclusive = true
                             }
                         }
                     }
                 },
                 onCancel = navController::navigateUp
+            )
+        }
+        composable(
+            route = Route.SurveyWorkspace.value,
+            arguments = listOf(
+                navArgument(Route.SurveyWorkspace.ARG_SURVEY_ID) {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val surveyId = backStackEntry.arguments?.getString(Route.SurveyWorkspace.ARG_SURVEY_ID)
+                ?: return@composable
+            val surveyWorkspaceFactory = remember(surveyId) {
+                SurveyWorkspaceViewModel.Factory(surveyId)
+            }
+            val viewModel: SurveyWorkspaceViewModel = navViewModel(
+                backStackEntry = backStackEntry,
+                factory = surveyWorkspaceFactory
+            )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            SurveyWorkspaceScreen(
+                uiState = uiState,
+                onEvent = viewModel::onEvent,
+                onBack = navController::navigateUp
             )
         }
         composable(Route.Settings.value) { backStackEntry ->

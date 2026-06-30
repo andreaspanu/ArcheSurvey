@@ -49,4 +49,19 @@
     <string name="action_delete_project">Elimina progetto</string>
     <string name="delete_project_dialog_title">Eliminare il progetto?</string>
     <string name="delete_project_dialog_message">Il progetto "%1$s" verra eliminato definitivamente. Questa operazione non e reversibile.</string>
+    <string name="survey_workspace_title">Rilievo 2D assistito</string>
+    <string name="survey_workspace_camera_title">Camera e AR workspace</string>
+    <string name="survey_workspace_arcore_status">ARCore: %1$s</string>
+    <string name="survey_workspace_camera_permission">Consenti accesso alla camera per provare la preview sul dispositivo.</string>
+    <string name="survey_workspace_manual_tools_title">Editor manuale</string>
+    <string name="survey_workspace_selected_opening">Apertura selezionata: %1$s</string>
+    <string name="survey_workspace_preview_title">Anteprima 2D</string>
+    <string name="survey_workspace_summary">Angoli: %1$d - Pareti: %2$d - Aperture: %3$d - Misure: %4$d</string>
+    <string name="action_enable_camera">Abilita camera</string>
+    <string name="action_add_corner">Aggiungi angolo</string>
+    <string name="action_add_wall">Aggiungi parete</string>
+    <string name="action_add_opening">Aggiungi apertura</string>
+    <string name="action_add_manual_measurement">Inserisci misura di controllo</string>
+    <string name="opening_type_door">Porta</string>
+    <string name="opening_type_window">Finestra</string>
 </resources>
