@@ -8,13 +8,19 @@ import it.archesurvey.app.domain.model.SurveyPoint
 import it.archesurvey.app.domain.model.SurveySegment
 import it.archesurvey.app.domain.model.SurveyWorkspace
 import it.archesurvey.app.domain.model.WallOpening
+import it.archesurvey.app.features.surveyworkspace.ar.ArTrackingState
+import it.archesurvey.app.features.surveyworkspace.camera.CameraFeatureDetector
+import it.archesurvey.app.features.surveyworkspace.camera.CameraReticlePosition
+import it.archesurvey.app.features.surveyworkspace.camera.ReticleCameraFeatureDetector
 import java.util.UUID
+import kotlin.math.sqrt
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class SurveyWorkspaceViewModel(
-    surveyId: String
+    surveyId: String,
+    private val cameraFeatureDetector: CameraFeatureDetector = ReticleCameraFeatureDetector()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         SurveyWorkspaceUiState(
@@ -25,7 +31,7 @@ class SurveyWorkspaceViewModel(
 
     fun onEvent(event: SurveyWorkspaceUiEvent) {
         when (event) {
-            SurveyWorkspaceUiEvent.AddPoint -> addPoint()
+            SurveyWorkspaceUiEvent.CapturePoint -> capturePoint()
             SurveyWorkspaceUiEvent.AddSegmentBetweenPoints -> addSegmentBetweenLastPoints()
             SurveyWorkspaceUiEvent.AddOpening -> addOpening()
             SurveyWorkspaceUiEvent.AddManualMeasurement -> addManualMeasurement()
@@ -42,25 +48,45 @@ class SurveyWorkspaceViewModel(
             is SurveyWorkspaceUiEvent.OpeningTypeSelected -> {
                 _uiState.value = _uiState.value.copy(selectedOpeningType = event.type)
             }
-            is SurveyWorkspaceUiEvent.ArCoreStatusChanged -> {
-                _uiState.value = _uiState.value.copy(arCoreStatus = event.status)
+            is SurveyWorkspaceUiEvent.ArAvailabilityChanged -> {
+                _uiState.value = _uiState.value.copy(arAvailabilityStatus = event.status)
+            }
+            is SurveyWorkspaceUiEvent.ArTrackingStateChanged -> {
+                _uiState.value = _uiState.value.copy(arTrackingState = event.state)
+            }
+            is SurveyWorkspaceUiEvent.ArPointCandidateChanged -> {
+                _uiState.value = _uiState.value.copy(
+                    arPointCandidate = event.result,
+                    arTrackingState = event.result.trackingState
+                )
             }
         }
     }
 
-    private fun addPoint() {
+    private fun capturePoint() {
         val state = _uiState.value
-        val index = state.workspace.points.size
+        val arCandidate = state.arPointCandidate
+        // temporary normalized camera coordinates
+        val fallbackReticlePosition = cameraFeatureDetector.detectCandidate(
+            reticlePosition = CameraReticlePosition(
+                normalizedX = state.reticleNormalizedX,
+                normalizedY = state.reticleNormalizedY
+            )
+        )
         val point = SurveyPoint(
             id = newId(),
-            xMeters = (index % GRID_COLUMNS).toFloat() * DEFAULT_POINT_STEP_METERS,
-            yMeters = (index / GRID_COLUMNS).toFloat() * DEFAULT_POINT_STEP_METERS
+            xMeters = arCandidate?.xMeters ?: fallbackReticlePosition.normalizedX,
+            yMeters = arCandidate?.zMeters ?: fallbackReticlePosition.normalizedY
         )
+        val estimated = arCandidate?.estimated
+            ?: (state.arTrackingState != ArTrackingState.TRACKING)
         _uiState.value = state.copy(
             workspace = state.workspace.copy(
                 points = state.workspace.points + point
             ),
-            history = state.history + SurveyWorkspaceElementType.POINT
+            history = state.history + SurveyWorkspaceElementType.POINT,
+            acquisitionStatus = SurveyAcquisitionStatus.POINT_ACQUIRED,
+            lastCapturedPointEstimated = estimated
         )
     }
 
@@ -68,13 +94,11 @@ class SurveyWorkspaceViewModel(
         val state = _uiState.value
         val points = state.workspace.points
         if (points.size < 2) {
-            addPoint()
-            addPoint()
+            return
         }
-        val updatedState = _uiState.value
-        val endPoint = updatedState.workspace.points.lastOrNull() ?: return
-        val startPoint = updatedState.workspace.points.dropLast(1).lastOrNull() ?: return
-        val exists = updatedState.workspace.segments.any {
+        val endPoint = points.lastOrNull() ?: return
+        val startPoint = points.dropLast(1).lastOrNull() ?: return
+        val exists = state.workspace.segments.any {
             it.startPointId == startPoint.id && it.endPointId == endPoint.id
         }
         if (exists) return
@@ -84,11 +108,12 @@ class SurveyWorkspaceViewModel(
             startPointId = startPoint.id,
             endPointId = endPoint.id
         )
-        _uiState.value = updatedState.copy(
-            workspace = updatedState.workspace.copy(
-                segments = updatedState.workspace.segments + segment
+        _uiState.value = state.copy(
+            workspace = state.workspace.copy(
+                segments = state.workspace.segments + segment
             ),
-            history = updatedState.history + SurveyWorkspaceElementType.SEGMENT
+            history = state.history + SurveyWorkspaceElementType.SEGMENT,
+            acquisitionStatus = SurveyAcquisitionStatus.SEGMENT_CREATED
         )
     }
 
@@ -117,6 +142,7 @@ class SurveyWorkspaceViewModel(
             .replace(',', '.')
             .toFloatOrNull()
             ?: DEFAULT_MEASUREMENT_METERS
+        val lastSegment = state.workspace.segments.lastOrNull()
         val fallbackIndex = state.workspace.manualMeasurements.size + 1
         val measurement = ManualMeasurement(
             id = newId(),
@@ -125,18 +151,31 @@ class SurveyWorkspaceViewModel(
             },
             valueMeters = valueMeters,
             segmentId = if (state.associateMeasurementToLastSegment) {
-                state.workspace.segments.lastOrNull()?.id
+                lastSegment?.id
             } else {
                 null
             }
         )
+        val scaleCorrectionFactor = if (
+            state.associateMeasurementToLastSegment &&
+            lastSegment != null
+        ) {
+            relativeDistanceMeters(
+                workspace = state.workspace,
+                segment = lastSegment
+            )?.takeIf { it > 0f }?.let { valueMeters / it }
+                ?: state.scaleCorrectionFactor
+        } else {
+            state.scaleCorrectionFactor
+        }
         _uiState.value = state.copy(
             workspace = state.workspace.copy(
                 manualMeasurements = state.workspace.manualMeasurements + measurement
             ),
             manualMeasurementDescription = "",
             manualMeasurementValueMeters = "",
-            history = state.history + SurveyWorkspaceElementType.MEASUREMENT
+            history = state.history + SurveyWorkspaceElementType.MEASUREMENT,
+            scaleCorrectionFactor = scaleCorrectionFactor
         )
     }
 
@@ -160,7 +199,8 @@ class SurveyWorkspaceViewModel(
         }
         _uiState.value = state.copy(
             workspace = updatedWorkspace,
-            history = state.history.dropLast(1)
+            history = state.history.dropLast(1),
+            acquisitionStatus = SurveyAcquisitionStatus.CAMERA_READY
         )
     }
 
@@ -172,6 +212,19 @@ class SurveyWorkspaceViewModel(
 
     private fun newId(): String = UUID.randomUUID().toString()
 
+    private fun relativeDistanceMeters(
+        workspace: SurveyWorkspace,
+        segment: SurveySegment
+    ): Float? {
+        val start = workspace.points.firstOrNull { it.id == segment.startPointId }
+            ?: return null
+        val end = workspace.points.firstOrNull { it.id == segment.endPointId }
+            ?: return null
+        val deltaX = end.xMeters - start.xMeters
+        val deltaY = end.yMeters - start.yMeters
+        return sqrt(deltaX * deltaX + deltaY * deltaY)
+    }
+
     class Factory(
         private val surveyId: String
     ) : ViewModelProvider.Factory {
@@ -182,8 +235,6 @@ class SurveyWorkspaceViewModel(
     }
 
     private companion object {
-        const val GRID_COLUMNS = 4
-        const val DEFAULT_POINT_STEP_METERS = 2f
         const val DEFAULT_MEASUREMENT_METERS = 3f
     }
 }

@@ -44,6 +44,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.ar.core.ArCoreApk
 import it.archesurvey.app.R
@@ -55,8 +58,12 @@ import it.archesurvey.app.domain.model.OpeningType
 import it.archesurvey.app.domain.model.SurveyPoint
 import it.archesurvey.app.domain.model.SurveySegment
 import it.archesurvey.app.domain.model.SurveyWorkspace
+import it.archesurvey.app.features.surveyworkspace.ar.ArAvailabilityStatus
+import it.archesurvey.app.features.surveyworkspace.ar.ArSurveyPreviewView
+import it.archesurvey.app.features.surveyworkspace.ar.ArTrackingState
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 @Composable
 fun SurveyWorkspaceScreen(
@@ -80,26 +87,27 @@ fun SurveyWorkspaceScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Spacing.medium)
         ) {
-            CameraArWorkspaceCard(
-                arCoreStatus = uiState.arCoreStatus,
-                onArCoreStatusResolved = {
-                    onEvent(SurveyWorkspaceUiEvent.ArCoreStatusChanged(it))
-                }
+            ArSurveyWorkspaceCard(
+                uiState = uiState,
+                onEvent = onEvent
             )
             ManualToolsCard(
                 uiState = uiState,
                 selectedOpeningType = uiState.selectedOpeningType,
                 onEvent = onEvent
             )
-            Preview2DCard(workspace = uiState.workspace)
+            Preview2DCard(
+                workspace = uiState.workspace,
+                scaleCorrectionFactor = uiState.scaleCorrectionFactor
+            )
         }
     }
 }
 
 @Composable
-private fun CameraArWorkspaceCard(
-    arCoreStatus: String,
-    onArCoreStatusResolved: (String) -> Unit
+private fun ArSurveyWorkspaceCard(
+    uiState: SurveyWorkspaceUiState,
+    onEvent: (SurveyWorkspaceUiEvent) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -116,50 +124,140 @@ private fun CameraArWorkspaceCard(
     ) { granted ->
         hasCameraPermission = granted
     }
+    var arPreviewView by remember {
+        mutableStateOf<ArSurveyPreviewView?>(null)
+    }
 
     LaunchedEffect(Unit) {
         val availability = ArCoreApk.getInstance().checkAvailability(context)
-        onArCoreStatusResolved(availability.toString())
+        onEvent(SurveyWorkspaceUiEvent.ArAvailabilityChanged(availability.toSurveyAvailability()))
         if (!hasCameraPermission) {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            arPreviewView?.pauseSession()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, arPreviewView) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> arPreviewView?.resumeSession()
+                Lifecycle.Event.ON_PAUSE -> arPreviewView?.pauseSession()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = stringResource(R.string.survey_workspace_camera_title),
+            text = stringResource(R.string.ar_survey_title),
             style = MaterialTheme.typography.titleMedium
         )
         Text(
-            text = stringResource(R.string.survey_workspace_arcore_status, arCoreStatus),
+            text = stringResource(R.string.ar_survey_practical_flow),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = stringResource(
+                R.string.ar_survey_availability,
+                arAvailabilityLabel(uiState.arAvailabilityStatus)
+            ),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = stringResource(
+                R.string.ar_survey_tracking,
+                arTrackingLabel(uiState.arTrackingState)
+            ),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = stringResource(
+                R.string.survey_workspace_acquisition_status,
+                acquisitionStatusLabel(uiState.acquisitionStatus)
+            ),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = stringResource(
+                R.string.survey_workspace_counters,
+                uiState.workspace.points.size,
+                uiState.workspace.segments.size,
+                uiState.workspace.manualMeasurements.size
+            ),
             style = MaterialTheme.typography.bodyMedium
         )
 
         if (hasCameraPermission) {
-            val cameraController = remember {
-                LifecycleCameraController(context).apply {
-                    cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-                    bindToLifecycle(lifecycleOwner)
+            val reticleColor = MaterialTheme.colorScheme.tertiary
+            if (uiState.arAvailabilityStatus == ArAvailabilityStatus.AVAILABLE) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(4f / 3f)
+                ) {
+                    AndroidView(
+                        factory = { viewContext ->
+                            ArSurveyPreviewView(viewContext).apply {
+                                onTrackingStateChanged = {
+                                    onEvent(SurveyWorkspaceUiEvent.ArTrackingStateChanged(it))
+                                }
+                                onPointCandidateChanged = {
+                                    onEvent(SurveyWorkspaceUiEvent.ArPointCandidateChanged(it))
+                                }
+                                onSessionError = {
+                                    onEvent(SurveyWorkspaceUiEvent.ArAvailabilityChanged(it))
+                                }
+                                resumeSession()
+                                arPreviewView = this
+                            }
+                        },
+                        update = { view ->
+                            view.onTrackingStateChanged = {
+                                onEvent(SurveyWorkspaceUiEvent.ArTrackingStateChanged(it))
+                            }
+                            view.onPointCandidateChanged = {
+                                onEvent(SurveyWorkspaceUiEvent.ArPointCandidateChanged(it))
+                            }
+                            view.onSessionError = {
+                                onEvent(SurveyWorkspaceUiEvent.ArAvailabilityChanged(it))
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    CameraReticleOverlay(
+                        color = reticleColor,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
+            } else {
+                Text(
+                    text = arFallbackMessage(uiState.arAvailabilityStatus),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                CameraXFallbackPreview(
+                    lifecycleOwner = lifecycleOwner,
+                    reticleColor = reticleColor
+                )
             }
-
-            DisposableEffect(cameraController) {
-                onDispose {
-                    cameraController.unbind()
-                }
-            }
-
-            AndroidView(
-                factory = { viewContext ->
-                    PreviewView(viewContext).apply {
-                        controller = cameraController
-                        scaleType = PreviewView.ScaleType.FILL_CENTER
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(4f / 3f)
+            AppButton(
+                text = stringResource(R.string.action_capture_point),
+                onClick = { onEvent(SurveyWorkspaceUiEvent.CapturePoint) }
             )
+            if (uiState.lastCapturedPointEstimated) {
+                Text(
+                    text = stringResource(R.string.ar_survey_last_point_estimated),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         } else {
             Text(
                 text = stringResource(R.string.survey_workspace_camera_permission),
@@ -174,6 +272,46 @@ private fun CameraArWorkspaceCard(
 }
 
 @Composable
+private fun CameraXFallbackPreview(
+    lifecycleOwner: LifecycleOwner,
+    reticleColor: Color
+) {
+    val context = LocalContext.current
+    val cameraController = remember {
+        LifecycleCameraController(context).apply {
+            cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            bindToLifecycle(lifecycleOwner)
+        }
+    }
+
+    DisposableEffect(cameraController) {
+        onDispose {
+            cameraController.unbind()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(4f / 3f)
+    ) {
+        AndroidView(
+            factory = { viewContext ->
+                PreviewView(viewContext).apply {
+                    controller = cameraController
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+        CameraReticleOverlay(
+            color = reticleColor,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
 private fun ManualToolsCard(
     uiState: SurveyWorkspaceUiState,
     selectedOpeningType: OpeningType,
@@ -183,10 +321,6 @@ private fun ManualToolsCard(
         Text(
             text = stringResource(R.string.survey_workspace_manual_tools_title),
             style = MaterialTheme.typography.titleMedium
-        )
-        AppButton(
-            text = stringResource(R.string.action_add_point),
-            onClick = { onEvent(SurveyWorkspaceUiEvent.AddPoint) }
         )
         AppButton(
             text = stringResource(R.string.action_add_segment_between_points),
@@ -260,7 +394,10 @@ private fun ManualToolsCard(
 }
 
 @Composable
-private fun Preview2DCard(workspace: SurveyWorkspace) {
+private fun Preview2DCard(
+    workspace: SurveyWorkspace,
+    scaleCorrectionFactor: Float?
+) {
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.survey_workspace_preview_title),
@@ -272,7 +409,16 @@ private fun Preview2DCard(workspace: SurveyWorkspace) {
                 .aspectRatio(1.4f)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            WorkspaceCanvas(workspace = workspace)
+            WorkspaceCanvas(
+                workspace = workspace,
+                scaleCorrectionFactor = scaleCorrectionFactor
+            )
+        }
+        scaleCorrectionFactor?.let { factor ->
+            Text(
+                text = stringResource(R.string.ar_survey_geometry_calibrated, factor),
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
         MeasurementList(workspace = workspace)
         Text(
@@ -289,8 +435,32 @@ private fun Preview2DCard(workspace: SurveyWorkspace) {
 }
 
 @Composable
-private fun WorkspaceCanvas(workspace: SurveyWorkspace) {
+private fun WorkspaceCanvas(
+    workspace: SurveyWorkspace,
+    scaleCorrectionFactor: Float?
+) {
     val pointById = workspace.points.associateBy { it.id }
+    val segmentMeasurementLabels = workspace.manualMeasurements.mapNotNull { measurement ->
+        measurement.segmentId?.let { segmentId ->
+            segmentId to stringResource(
+                R.string.survey_workspace_segment_measurement_label,
+                measurement.valueMeters
+            )
+        }
+    }.toMap()
+    val segmentDistanceLabels = workspace.segments.mapNotNull { segment ->
+        val distance = workspace.relativeDistanceMeters(segment) ?: return@mapNotNull null
+        val correctedDistance = scaleCorrectionFactor?.let { distance * it }
+        segment.id to SegmentDistanceLabels(
+            estimatedLabel = stringResource(
+                R.string.ar_survey_estimated_distance,
+                distance
+            ),
+            correctedLabel = correctedDistance?.let {
+                stringResource(R.string.ar_survey_corrected_distance, it)
+            }
+        )
+    }.toMap()
     Canvas(modifier = Modifier.fillMaxSize()) {
         val padding = 36.dp.toPx()
         val gridColor = Color(0xFFD7DEE8)
@@ -338,19 +508,43 @@ private fun WorkspaceCanvas(workspace: SurveyWorkspace) {
             val end = pointById[segment.endPointId] ?: return@forEachIndexed
             val startOffset = map(start)
             val endOffset = map(end)
+            val visibleEndOffset = if (startOffset == endOffset) {
+                startOffset + Offset(18.dp.toPx(), 0f)
+            } else {
+                endOffset
+            }
+            val segmentLabelPosition = Offset(
+                x = (startOffset.x + visibleEndOffset.x) / 2f,
+                y = (startOffset.y + visibleEndOffset.y) / 2f - 8.dp.toPx()
+            )
             drawLine(
                 color = segmentColor,
                 start = startOffset,
-                end = endOffset,
+                end = visibleEndOffset,
                 strokeWidth = 5f
             )
             drawLabel(
                 text = "S${index + 1}",
-                position = Offset(
-                    x = (startOffset.x + endOffset.x) / 2f,
-                    y = (startOffset.y + endOffset.y) / 2f - 8.dp.toPx()
-                )
+                position = segmentLabelPosition
             )
+            segmentMeasurementLabels[segment.id]?.let { measurementLabel ->
+                drawLabel(
+                    text = measurementLabel,
+                    position = segmentLabelPosition + Offset(0f, 24.dp.toPx())
+                )
+            }
+            segmentDistanceLabels[segment.id]?.let { labels ->
+                drawLabel(
+                    text = labels.estimatedLabel,
+                    position = segmentLabelPosition + Offset(0f, 48.dp.toPx())
+                )
+                labels.correctedLabel?.let { correctedLabel ->
+                    drawLabel(
+                        text = correctedLabel,
+                        position = segmentLabelPosition + Offset(0f, 72.dp.toPx())
+                    )
+                }
+            }
         }
 
         points.forEachIndexed { index, point ->
@@ -418,6 +612,133 @@ private fun MeasurementList(workspace: SurveyWorkspace) {
     }
 }
 
+@Composable
+private fun acquisitionStatusLabel(status: SurveyAcquisitionStatus): String {
+    return when (status) {
+        SurveyAcquisitionStatus.CAMERA_READY -> {
+            stringResource(R.string.survey_workspace_status_camera_ready)
+        }
+        SurveyAcquisitionStatus.POINT_ACQUIRED -> {
+            stringResource(R.string.survey_workspace_status_point_acquired)
+        }
+        SurveyAcquisitionStatus.SEGMENT_CREATED -> {
+            stringResource(R.string.survey_workspace_status_segment_created)
+        }
+    }
+}
+
+@Composable
+private fun CameraReticleOverlay(
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val lineLength = 28.dp.toPx()
+        val gap = 8.dp.toPx()
+        drawCircle(
+            color = color,
+            radius = 18.dp.toPx(),
+            center = center,
+            style = Stroke(width = 3.dp.toPx())
+        )
+        drawLine(
+            color = color,
+            start = Offset(center.x - lineLength, center.y),
+            end = Offset(center.x - gap, center.y),
+            strokeWidth = 3.dp.toPx()
+        )
+        drawLine(
+            color = color,
+            start = Offset(center.x + gap, center.y),
+            end = Offset(center.x + lineLength, center.y),
+            strokeWidth = 3.dp.toPx()
+        )
+        drawLine(
+            color = color,
+            start = Offset(center.x, center.y - lineLength),
+            end = Offset(center.x, center.y - gap),
+            strokeWidth = 3.dp.toPx()
+        )
+        drawLine(
+            color = color,
+            start = Offset(center.x, center.y + gap),
+            end = Offset(center.x, center.y + lineLength),
+            strokeWidth = 3.dp.toPx()
+        )
+    }
+}
+
+@Composable
+private fun arAvailabilityLabel(status: ArAvailabilityStatus): String {
+    return when (status) {
+        ArAvailabilityStatus.CHECKING -> {
+            stringResource(R.string.ar_survey_availability_checking)
+        }
+        ArAvailabilityStatus.AVAILABLE -> {
+            stringResource(R.string.ar_survey_availability_available)
+        }
+        ArAvailabilityStatus.NEEDS_INSTALL_OR_UPDATE -> {
+            stringResource(R.string.ar_survey_availability_needs_install)
+        }
+        ArAvailabilityStatus.UNAVAILABLE -> {
+            stringResource(R.string.ar_survey_availability_unavailable)
+        }
+    }
+}
+
+@Composable
+private fun arTrackingLabel(state: ArTrackingState): String {
+    return when (state) {
+        ArTrackingState.TRACKING -> {
+            stringResource(R.string.ar_survey_tracking_active)
+        }
+        ArTrackingState.LIMITED -> {
+            stringResource(R.string.ar_survey_tracking_limited)
+        }
+        ArTrackingState.LOST -> {
+            stringResource(R.string.ar_survey_tracking_lost)
+        }
+    }
+}
+
+@Composable
+private fun arFallbackMessage(status: ArAvailabilityStatus): String {
+    return when (status) {
+        ArAvailabilityStatus.CHECKING -> {
+            stringResource(R.string.ar_survey_fallback_checking)
+        }
+        ArAvailabilityStatus.AVAILABLE -> {
+            stringResource(R.string.ar_survey_fallback_camera)
+        }
+        ArAvailabilityStatus.NEEDS_INSTALL_OR_UPDATE -> {
+            stringResource(R.string.ar_survey_fallback_needs_install)
+        }
+        ArAvailabilityStatus.UNAVAILABLE -> {
+            stringResource(R.string.ar_survey_fallback_unavailable)
+        }
+    }
+}
+
+private fun ArCoreApk.Availability.toSurveyAvailability(): ArAvailabilityStatus {
+    val availabilityName = name
+    return when {
+        availabilityName == "SUPPORTED_INSTALLED" -> ArAvailabilityStatus.AVAILABLE
+        availabilityName.startsWith("SUPPORTED_") -> {
+            ArAvailabilityStatus.NEEDS_INSTALL_OR_UPDATE
+        }
+        availabilityName == "UNSUPPORTED_DEVICE_NOT_CAPABLE" -> {
+            ArAvailabilityStatus.UNAVAILABLE
+        }
+        else -> ArAvailabilityStatus.CHECKING
+    }
+}
+
+private data class SegmentDistanceLabels(
+    val estimatedLabel: String,
+    val correctedLabel: String?
+)
+
 private data class WorkspaceBounds(
     val minX: Float,
     val maxX: Float,
@@ -440,6 +761,14 @@ private fun List<SurveyPoint>.toBounds(): WorkspaceBounds {
         minY = minOf { it.yMeters },
         maxY = maxOf { it.yMeters }
     )
+}
+
+private fun SurveyWorkspace.relativeDistanceMeters(segment: SurveySegment): Float? {
+    val start = points.firstOrNull { it.id == segment.startPointId } ?: return null
+    val end = points.firstOrNull { it.id == segment.endPointId } ?: return null
+    val deltaX = end.xMeters - start.xMeters
+    val deltaY = end.yMeters - start.yMeters
+    return sqrt(deltaX * deltaX + deltaY * deltaY)
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLabel(
