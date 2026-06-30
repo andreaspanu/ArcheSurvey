@@ -1,11 +1,20 @@
 package it.archesurvey.app.features.home
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import it.archesurvey.app.R
+import it.archesurvey.app.core.designsystem.AppButton
+import it.archesurvey.app.core.designsystem.Spacing
 
 @Composable
 fun HomeScreen(
@@ -15,54 +24,37 @@ fun HomeScreen(
     onSettings: () -> Unit = {},
     onAbout: () -> Unit = {}
 ) {
-
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(Spacing.large),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-
         Text(
-            text = "ARCHÈ SURVEY",
+            text = stringResource(R.string.home_title),
             style = MaterialTheme.typography.headlineLarge
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(Spacing.small))
 
         Text(
-            text = "Smart Building Survey",
+            text = stringResource(R.string.home_subtitle),
             style = MaterialTheme.typography.bodyLarge
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(Spacing.xLarge))
 
-        MenuButton("📐 Nuovo rilievo", onNewSurvey)
-        MenuButton("📂 Progetti", onProjects)
-        MenuButton("⚙️ Impostazioni", onSettings)
-        MenuButton("ℹ️ Informazioni", onAbout)
+        AppButton(stringResource(R.string.action_new_survey), onNewSurvey)
+        AppButton(stringResource(R.string.action_projects), onProjects)
+        AppButton(stringResource(R.string.action_settings), onSettings)
+        AppButton(stringResource(R.string.action_about), onAbout)
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(Spacing.xLarge))
 
         Text(
-            text = "Versione 0.1.0",
+            text = stringResource(R.string.version_name),
             style = MaterialTheme.typography.bodySmall
         )
-    }
-}
-
-@Composable
-private fun MenuButton(
-    text: String,
-    onClick: () -> Unit
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-    ) {
-        Text(text)
     }
 }

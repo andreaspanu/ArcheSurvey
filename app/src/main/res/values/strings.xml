@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">ArcheSurvey</string>
+    <string name="home_title">ArcheSurvey</string>
+    <string name="home_subtitle">Smart Building Survey</string>
+    <string name="action_new_survey">Nuovo rilievo</string>
+    <string name="action_projects">Progetti</string>
+    <string name="action_settings">Impostazioni</string>
+    <string name="action_about">Informazioni</string>
+    <string name="version_name">Versione 0.1.0</string>
+    <string name="projects_title">Progetti</string>
+    <string name="projects_empty_state">Nessun progetto disponibile.</string>
+    <string name="survey_title">Nuovo rilievo</string>
+    <string name="survey_empty_state">Il flusso di rilievo sara disponibile nei prossimi sprint.</string>
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_empty_state">Le preferenze applicative saranno disponibili nei prossimi sprint.</string>
+    <string name="about_title">Informazioni</string>
+    <string name="about_description">ArcheSurvey e una piattaforma professionale per rilievi tecnici e documentazione sul campo.</string>
+    <string name="navigation_back">Indietro</string>
 </resources>
