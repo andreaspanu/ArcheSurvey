@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,7 +28,8 @@ import it.archesurvey.app.features.survey.SurveyViewModel
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    val appContainer = remember { AppContainer() }
+    val applicationContext = LocalContext.current.applicationContext
+    val appContainer = remember(applicationContext) { AppContainer(applicationContext) }
     val defaultFactory = remember { ViewModelProvider.NewInstanceFactory() }
     val projectsFactory = remember(appContainer) {
         ProjectsViewModel.Factory(
