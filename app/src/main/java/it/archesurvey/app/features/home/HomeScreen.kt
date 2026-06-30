@@ -20,7 +20,6 @@ import it.archesurvey.app.core.designsystem.Spacing
 fun HomeScreen(
     uiState: HomeUiState,
     modifier: Modifier = Modifier,
-    onNewSurvey: () -> Unit = {},
     onProjects: () -> Unit = {},
     onSettings: () -> Unit = {},
     onAbout: () -> Unit = {}
@@ -47,7 +46,6 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(Spacing.xLarge))
 
-            AppButton(stringResource(R.string.action_new_survey), onNewSurvey)
             AppButton(stringResource(R.string.action_projects), onProjects)
             AppButton(stringResource(R.string.action_settings), onSettings)
             AppButton(stringResource(R.string.action_about), onAbout)

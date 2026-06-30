@@ -17,37 +17,62 @@ class RoomProjectRepository(
 ) : ProjectRepository {
     override suspend fun getProjects(): AppResult<List<Project>> {
         return withContext(ioDispatcher) {
-            AppResult.Success(projectDao.getProjects().map { it.toDomain() })
+            try {
+                AppResult.Success(projectDao.getProjects().map { it.toDomain() })
+            } catch (throwable: Throwable) {
+                storageError(throwable)
+            }
         }
     }
 
     override suspend fun getProject(projectId: String): AppResult<Project> {
         return withContext(ioDispatcher) {
-            val project = projectDao.getProject(projectId)
-            if (project != null) {
-                AppResult.Success(project.toDomain())
-            } else {
-                AppResult.Error(
-                    AppError(
-                        code = "PROJECT_NOT_FOUND",
-                        message = "Project not found"
+            try {
+                val project = projectDao.getProject(projectId)
+                if (project != null) {
+                    AppResult.Success(project.toDomain())
+                } else {
+                    AppResult.Error(
+                        AppError(
+                            code = "PROJECT_NOT_FOUND",
+                            message = "PROJECT_NOT_FOUND"
+                        )
                     )
-                )
+                }
+            } catch (throwable: Throwable) {
+                storageError(throwable)
             }
         }
     }
 
     override suspend fun addProject(project: Project): AppResult<Project> {
         return withContext(ioDispatcher) {
-            projectDao.insertProject(project.toEntity())
-            AppResult.Success(project)
+            try {
+                projectDao.insertProject(project.toEntity())
+                AppResult.Success(project)
+            } catch (throwable: Throwable) {
+                storageError(throwable)
+            }
         }
     }
 
     override suspend fun deleteProject(projectId: String): AppResult<Unit> {
         return withContext(ioDispatcher) {
-            projectDao.deleteProject(projectId)
-            AppResult.Success(Unit)
+            try {
+                projectDao.deleteProject(projectId)
+                AppResult.Success(Unit)
+            } catch (throwable: Throwable) {
+                storageError(throwable)
+            }
         }
+    }
+
+    private fun storageError(throwable: Throwable): AppResult.Error {
+        return AppResult.Error(
+            AppError(
+                code = "PROJECT_STORAGE_ERROR",
+                message = throwable.message ?: "PROJECT_STORAGE_ERROR"
+            )
+        )
     }
 }

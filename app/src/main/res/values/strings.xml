@@ -26,12 +26,6 @@
     <string name="project_detail_line">%1$s: %2$s</string>
     <string name="project_surveys_title">Rilievi</string>
     <string name="project_surveys_empty_state">Nessun rilievo collegato a questo progetto. Crea un rilievo per iniziare la documentazione sul campo.</string>
-    <string name="survey_title">Nuovo rilievo</string>
-    <string name="survey_empty_state">Il flusso di rilievo sara disponibile nei prossimi sprint.</string>
-    <string name="survey_loading">Preparazione rilievo...</string>
-    <string name="survey_count">Rilievi disponibili: %1$d</string>
-    <string name="survey_capture_ready">Acquisizione pronta per moduli CameraX e ARCore.</string>
-    <string name="survey_capture_pending">Acquisizione non ancora preparata.</string>
     <string name="new_survey_title">Nuovo rilievo</string>
     <string name="survey_name_label">Nome rilievo</string>
     <string name="survey_notes_label">Descrizione o note</string>

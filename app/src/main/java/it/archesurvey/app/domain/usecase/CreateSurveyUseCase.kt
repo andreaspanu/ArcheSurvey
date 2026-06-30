@@ -4,6 +4,7 @@ import it.archesurvey.app.core.common.AppError
 import it.archesurvey.app.core.common.AppResult
 import it.archesurvey.app.domain.model.Survey
 import it.archesurvey.app.domain.repository.SurveyRepository
+import java.util.UUID
 
 class CreateSurveyUseCase(
     private val surveyRepository: SurveyRepository
@@ -18,13 +19,13 @@ class CreateSurveyUseCase(
             return AppResult.Error(
                 AppError(
                     code = "SURVEY_NAME_REQUIRED",
-                    message = "Survey name is required"
+                    message = "SURVEY_NAME_REQUIRED"
                 )
             )
         }
 
         val survey = Survey(
-            id = "survey-${System.currentTimeMillis()}",
+            id = UUID.randomUUID().toString(),
             projectId = projectId,
             title = normalizedTitle,
             notes = notes.trim(),

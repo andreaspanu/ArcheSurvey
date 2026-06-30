@@ -1,11 +1,11 @@
 package it.archesurvey.app.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -28,8 +28,6 @@ import it.archesurvey.app.features.projects.newsurvey.NewSurveyScreen
 import it.archesurvey.app.features.projects.newsurvey.NewSurveyViewModel
 import it.archesurvey.app.features.settings.SettingsScreen
 import it.archesurvey.app.features.settings.SettingsViewModel
-import it.archesurvey.app.features.survey.SurveyScreen
-import it.archesurvey.app.features.survey.SurveyViewModel
 
 @Composable
 fun AppNavigation() {
@@ -46,9 +44,6 @@ fun AppNavigation() {
     val newProjectFactory = remember(appContainer) {
         NewProjectViewModel.Factory(appContainer.createProjectUseCase)
     }
-    val surveyFactory = remember(appContainer) {
-        SurveyViewModel.Factory(appContainer.getSurveysUseCase)
-    }
 
     NavHost(
         navController = navController,
@@ -56,14 +51,10 @@ fun AppNavigation() {
     ) {
         composable(Route.Home.value) { backStackEntry ->
             val viewModel: HomeViewModel = navViewModel(backStackEntry, defaultFactory)
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             HomeScreen(
                 uiState = uiState,
-                onNewSurvey = {
-                    viewModel.onEvent(HomeUiEvent.NewSurveySelected)
-                    navController.navigate(Route.Survey.value)
-                },
                 onProjects = {
                     viewModel.onEvent(HomeUiEvent.ProjectsSelected)
                     navController.navigate(Route.Projects.value)
@@ -80,7 +71,7 @@ fun AppNavigation() {
         }
         composable(Route.Projects.value) { backStackEntry ->
             val viewModel: ProjectsViewModel = navViewModel(backStackEntry, projectsFactory)
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             ProjectsScreen(
                 uiState = uiState,
@@ -94,7 +85,7 @@ fun AppNavigation() {
         }
         composable(Route.NewProject.value) { backStackEntry ->
             val viewModel: NewProjectViewModel = navViewModel(backStackEntry, newProjectFactory)
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             NewProjectScreen(
                 uiState = uiState,
@@ -131,7 +122,7 @@ fun AppNavigation() {
                 backStackEntry = backStackEntry,
                 factory = projectDetailFactory
             )
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             ProjectDetailScreen(
                 uiState = uiState,
@@ -160,7 +151,7 @@ fun AppNavigation() {
                 backStackEntry = backStackEntry,
                 factory = newSurveyFactory
             )
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             NewSurveyScreen(
                 uiState = uiState,
@@ -176,19 +167,9 @@ fun AppNavigation() {
                 onCancel = navController::navigateUp
             )
         }
-        composable(Route.Survey.value) { backStackEntry ->
-            val viewModel: SurveyViewModel = navViewModel(backStackEntry, surveyFactory)
-            val uiState by viewModel.uiState.collectAsState()
-
-            SurveyScreen(
-                uiState = uiState,
-                onEvent = viewModel::onEvent,
-                onBack = navController::navigateUp
-            )
-        }
         composable(Route.Settings.value) { backStackEntry ->
             val viewModel: SettingsViewModel = navViewModel(backStackEntry, defaultFactory)
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             SettingsScreen(
                 uiState = uiState,
@@ -198,7 +179,7 @@ fun AppNavigation() {
         }
         composable(Route.About.value) { backStackEntry ->
             val viewModel: AboutViewModel = navViewModel(backStackEntry, defaultFactory)
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             AboutScreen(
                 uiState = uiState,

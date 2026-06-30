@@ -5,6 +5,9 @@ import it.archesurvey.app.core.common.AppError
 import it.archesurvey.app.domain.model.Project
 import it.archesurvey.app.domain.repository.ProjectRepository
 
+/**
+ * Legacy/test implementation kept as an alternative ProjectRepository contract adapter.
+ */
 class InMemoryProjectRepository : ProjectRepository {
     private val projects = mutableListOf<Project>()
 

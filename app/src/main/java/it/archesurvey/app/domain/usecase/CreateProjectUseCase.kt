@@ -4,6 +4,7 @@ import it.archesurvey.app.core.common.AppError
 import it.archesurvey.app.core.common.AppResult
 import it.archesurvey.app.domain.model.Project
 import it.archesurvey.app.domain.repository.ProjectRepository
+import java.util.UUID
 
 class CreateProjectUseCase(
     private val projectRepository: ProjectRepository
@@ -19,13 +20,13 @@ class CreateProjectUseCase(
             return AppResult.Error(
                 AppError(
                     code = "PROJECT_NAME_REQUIRED",
-                    message = "Project name is required"
+                    message = "PROJECT_NAME_REQUIRED"
                 )
             )
         }
 
         val project = Project(
-            id = "project-${System.currentTimeMillis()}",
+            id = UUID.randomUUID().toString(),
             name = normalizedName,
             client = client.trim(),
             location = location.trim(),

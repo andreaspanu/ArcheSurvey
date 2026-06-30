@@ -11,7 +11,6 @@ class HomeViewModel : ViewModel() {
 
     fun onEvent(event: HomeUiEvent) {
         _uiState.value = when (event) {
-            HomeUiEvent.NewSurveySelected,
             HomeUiEvent.ProjectsSelected,
             HomeUiEvent.SettingsSelected,
             HomeUiEvent.AboutSelected -> _uiState.value.copy(isReady = true)

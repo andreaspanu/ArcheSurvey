@@ -18,7 +18,6 @@ sealed class Route(val value: String) {
             return "projects/$projectId/surveys/new"
         }
     }
-    data object Survey : Route("survey")
     data object Settings : Route("settings")
     data object About : Route("about")
 }
