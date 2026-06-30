@@ -18,6 +18,7 @@ import it.archesurvey.app.core.designsystem.Spacing
 
 @Composable
 fun HomeScreen(
+    uiState: HomeUiState,
     modifier: Modifier = Modifier,
     onNewSurvey: () -> Unit = {},
     onProjects: () -> Unit = {},
@@ -31,30 +32,32 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = stringResource(R.string.home_title),
-            style = MaterialTheme.typography.headlineLarge
-        )
+        if (uiState.isReady) {
+            Text(
+                text = stringResource(R.string.home_title),
+                style = MaterialTheme.typography.headlineLarge
+            )
 
-        Spacer(modifier = Modifier.height(Spacing.small))
+            Spacer(modifier = Modifier.height(Spacing.small))
 
-        Text(
-            text = stringResource(R.string.home_subtitle),
-            style = MaterialTheme.typography.bodyLarge
-        )
+            Text(
+                text = stringResource(R.string.home_subtitle),
+                style = MaterialTheme.typography.bodyLarge
+            )
 
-        Spacer(modifier = Modifier.height(Spacing.xLarge))
+            Spacer(modifier = Modifier.height(Spacing.xLarge))
 
-        AppButton(stringResource(R.string.action_new_survey), onNewSurvey)
-        AppButton(stringResource(R.string.action_projects), onProjects)
-        AppButton(stringResource(R.string.action_settings), onSettings)
-        AppButton(stringResource(R.string.action_about), onAbout)
+            AppButton(stringResource(R.string.action_new_survey), onNewSurvey)
+            AppButton(stringResource(R.string.action_projects), onProjects)
+            AppButton(stringResource(R.string.action_settings), onSettings)
+            AppButton(stringResource(R.string.action_about), onAbout)
 
-        Spacer(modifier = Modifier.height(Spacing.xLarge))
+            Spacer(modifier = Modifier.height(Spacing.xLarge))
 
-        Text(
-            text = stringResource(R.string.version_name),
-            style = MaterialTheme.typography.bodySmall
-        )
+            Text(
+                text = stringResource(R.string.version_name),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
     }
 }

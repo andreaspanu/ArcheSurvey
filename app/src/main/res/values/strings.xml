@@ -9,11 +9,23 @@
     <string name="version_name">Versione 0.1.0</string>
     <string name="projects_title">Progetti</string>
     <string name="projects_empty_state">Nessun progetto disponibile.</string>
+    <string name="projects_loading">Caricamento progetti...</string>
+    <string name="projects_count">Progetti disponibili: %1$d</string>
     <string name="survey_title">Nuovo rilievo</string>
     <string name="survey_empty_state">Il flusso di rilievo sara disponibile nei prossimi sprint.</string>
+    <string name="survey_loading">Preparazione rilievo...</string>
+    <string name="survey_count">Rilievi disponibili: %1$d</string>
+    <string name="survey_capture_ready">Acquisizione pronta per moduli CameraX e ARCore.</string>
+    <string name="survey_capture_pending">Acquisizione non ancora preparata.</string>
     <string name="settings_title">Impostazioni</string>
     <string name="settings_empty_state">Le preferenze applicative saranno disponibili nei prossimi sprint.</string>
+    <string name="settings_offline_mode">Modalita offline</string>
+    <string name="settings_offline_enabled">Archivio locale predisposto per lavoro sul campo.</string>
+    <string name="settings_offline_disabled">Sincronizzazione prioritaria quando disponibile.</string>
     <string name="about_title">Informazioni</string>
     <string name="about_description">ArcheSurvey e una piattaforma professionale per rilievi tecnici e documentazione sul campo.</string>
+    <string name="about_loading">Caricamento informazioni...</string>
     <string name="navigation_back">Indietro</string>
+    <string name="action_refresh">Aggiorna</string>
+    <string name="action_prepare_capture">Prepara acquisizione</string>
 </resources>

@@ -6,10 +6,17 @@ import it.archesurvey.app.R
 import it.archesurvey.app.core.designsystem.AppScreenPlaceholder
 
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(
+    uiState: AboutUiState,
+    onBack: () -> Unit
+) {
     AppScreenPlaceholder(
         title = stringResource(R.string.about_title),
-        message = stringResource(R.string.about_description),
+        message = if (uiState.isReady) {
+            stringResource(R.string.about_description)
+        } else {
+            stringResource(R.string.about_loading)
+        },
         onBack = onBack
     )
 }
