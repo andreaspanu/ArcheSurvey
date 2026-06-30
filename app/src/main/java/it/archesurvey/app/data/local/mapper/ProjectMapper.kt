@@ -9,7 +9,8 @@ fun ProjectEntity.toDomain(): Project {
         name = name,
         client = client,
         location = location,
-        notes = notes
+        notes = notes,
+        createdAtMillis = createdAtMillis
     )
 }
 
@@ -19,6 +20,7 @@ fun Project.toEntity(): ProjectEntity {
         name = name,
         client = client,
         location = location,
-        notes = notes
+        notes = notes,
+        createdAtMillis = createdAtMillis
     )
 }

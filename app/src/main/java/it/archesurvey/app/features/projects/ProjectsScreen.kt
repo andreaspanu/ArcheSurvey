@@ -1,15 +1,18 @@
 package it.archesurvey.app.features.projects
 
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -25,6 +28,7 @@ fun ProjectsScreen(
     uiState: ProjectsUiState,
     onEvent: (ProjectsUiEvent) -> Unit,
     onNewProject: () -> Unit,
+    onProjectSelected: (String) -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -60,14 +64,24 @@ fun ProjectsScreen(
                     uiState.projects.forEach { project ->
                         ProjectCard(
                             project = project,
+                            onOpen = { onProjectSelected(project.id) },
                             onDelete = {
-                                onEvent(ProjectsUiEvent.DeleteProject(project.id))
+                                onEvent(ProjectsUiEvent.RequestDeleteProject(project))
                             }
                         )
                     }
                 }
             }
         }
+    }
+
+    val projectPendingDeletion = uiState.projectPendingDeletion
+    if (projectPendingDeletion != null) {
+        DeleteProjectDialog(
+            projectName = projectPendingDeletion.name,
+            onDismiss = { onEvent(ProjectsUiEvent.CancelDeleteProject) },
+            onConfirm = { onEvent(ProjectsUiEvent.ConfirmDeleteProject) }
+        )
     }
 }
 
@@ -98,9 +112,14 @@ private fun ProjectStatusCard(message: String) {
 @Composable
 private fun ProjectCard(
     project: Project,
+    onOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
-    AppCard(modifier = Modifier.fillMaxWidth()) {
+    AppCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen)
+    ) {
         Text(
             text = project.name,
             style = MaterialTheme.typography.titleMedium
@@ -128,4 +147,36 @@ private fun ProjectCard(
             onClick = onDelete
         )
     }
+}
+
+@Composable
+private fun DeleteProjectDialog(
+    projectName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = stringResource(R.string.delete_project_dialog_title))
+        },
+        text = {
+            Text(
+                text = stringResource(
+                    R.string.delete_project_dialog_message,
+                    projectName
+                )
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.action_cancel))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(text = stringResource(R.string.action_delete))
+            }
+        }
+    )
 }

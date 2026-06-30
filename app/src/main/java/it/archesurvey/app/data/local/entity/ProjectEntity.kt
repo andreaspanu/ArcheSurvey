@@ -9,5 +9,6 @@ data class ProjectEntity(
     val name: String,
     val client: String,
     val location: String,
-    val notes: String
+    val notes: String,
+    val createdAtMillis: Long?
 )

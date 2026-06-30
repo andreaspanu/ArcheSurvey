@@ -25,7 +25,16 @@ class ProjectsViewModel(
     fun onEvent(event: ProjectsUiEvent) {
         when (event) {
             ProjectsUiEvent.Refresh -> loadProjects()
-            is ProjectsUiEvent.DeleteProject -> deleteProject(event.projectId)
+            is ProjectsUiEvent.RequestDeleteProject -> {
+                _uiState.value = _uiState.value.copy(projectPendingDeletion = event.project)
+            }
+            ProjectsUiEvent.CancelDeleteProject -> {
+                _uiState.value = _uiState.value.copy(projectPendingDeletion = null)
+            }
+            ProjectsUiEvent.ConfirmDeleteProject -> {
+                val projectId = _uiState.value.projectPendingDeletion?.id ?: return
+                deleteProject(projectId)
+            }
         }
     }
 
@@ -50,7 +59,10 @@ class ProjectsViewModel(
             when (val result = deleteProjectUseCase(projectId)) {
                 is AppResult.Success -> loadProjects()
                 is AppResult.Error -> {
-                    _uiState.value = _uiState.value.copy(errorMessage = result.reason.message)
+                    _uiState.value = _uiState.value.copy(
+                        projectPendingDeletion = null,
+                        errorMessage = result.reason.message
+                    )
                 }
             }
         }

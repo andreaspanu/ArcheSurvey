@@ -29,7 +29,8 @@ class CreateProjectUseCase(
             name = normalizedName,
             client = client.trim(),
             location = location.trim(),
-            notes = notes.trim()
+            notes = notes.trim(),
+            createdAtMillis = System.currentTimeMillis()
         )
 
         return projectRepository.addProject(project)
