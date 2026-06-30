@@ -45,6 +45,9 @@ set JAVA_EXE=java.exe
 %JAVA_EXE% -version >NUL 2>&1
 if %ERRORLEVEL% equ 0 goto execute
 
+set JAVA_EXE=C:\Program Files\Android\Android Studio\jbr\bin\java.exe
+if exist "%JAVA_EXE%" goto execute
+
 echo. 1>&2
 echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
 echo. 1>&2
